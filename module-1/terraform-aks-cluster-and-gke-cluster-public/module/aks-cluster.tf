@@ -246,11 +246,12 @@ resource "azurerm_monitor_metric_alert" "alert_rule1" {
 
 
   criteria {
-    metric_namespace = "Microsoft.ContainerService/managedClusters"
-    metric_name      = "node_cpu_usage_percentage"
-    aggregation      = "Average"
-    operator         = "GreaterThan"
-    threshold        = 80
+    metric_namespace       = "Microsoft.ContainerService/managedClusters"
+    metric_name            = "node_cpu_usage_percentage"
+    aggregation            = "Average"
+    operator               = "GreaterThan"
+    threshold              = 80
+    skip_metric_validation = true
   }
    
   action {
