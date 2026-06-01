@@ -1,0 +1,42 @@
+# kubectl create secret tls tls-kafka-ui-ingress --cert=18b52204de370df6.crt --key=server.key -n kafka --context=gke_wise-trainer-244916_us-central1_multicloud-gke-cluster
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: kafka-ui-gateway
+  namespace: kafka
+spec:
+  gatewayClassName: nginx # e.g., "nginx"
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    hostname: "kafka-ui.singhritesh85.com"
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: "kafka-ui.singhritesh85.com"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - kind: Secret
+        name: tls-kafka-ui-ingress
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: kafka-ui-route
+  namespace: kafka
+spec:
+  parentRefs:
+  - name: kafka-ui-gateway
+    namespace: kafka
+    sectionName: https
+  - name: kafka-ui-gateway
+    namespace: kafka
+    sectionName: http
+  hostnames:
+  - "kafka-ui.singhritesh85.com"
+  rules:
+  - backendRefs:
+    - name: kafka-ui-service # Name of the Service created by the Helm chart
+      port: 80
