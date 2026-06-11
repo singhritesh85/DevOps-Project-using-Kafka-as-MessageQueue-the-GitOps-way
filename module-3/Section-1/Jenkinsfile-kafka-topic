@@ -1,0 +1,53 @@
+pipeline{
+    agent{
+        node{
+            label "Slave-1"
+            customWorkspace "/home/k8s-management/aws-msk/"
+        }
+    }
+    environment {
+        JAVA_HOME="/usr/lib/jvm/java-25-amazon-corretto.x86_64"
+        PATH="$PATH:$JAVA_HOME/bin:/usr/local/bin:/opt/apache-maven/bin:/opt/node-v16.0.0/bin"
+        ARGOCD_PASSWORD=credentials('argocd-password')
+        GITHUB_USERNAME=credentials('github-username')
+        GITHUB_PASSWORD=credentials('github-password')
+    }
+    parameters { 
+        string(name: 'COMMIT_ID', defaultValue: '', description: 'Provide the Commit ID') 
+        string(name: 'REPO_NAME', defaultValue: '', description: 'Provide the Repository Name')
+        string(name: 'TAG_NAME', defaultValue: '', description: 'Provide the Tag Name')
+		string(name: 'MSK_CLUSTER_ARN', defaultValue: '', description: 'Provide the AWS MSK Cluster ARN')
+        choice(name: 'AWS_REGION', choices: ['us-east-2', 'us-east-1', 'us-west-2', 'us-west-1', 'ap-south-1', 'ap-south-2'], description: 'Select the AWS Region')
+    }
+    stages{
+        stage("Clone-code"){
+            steps{
+                cleanWs()
+                checkout scmGit(branches: [[name: '${COMMIT_ID}']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-cred', url: 'https://github.com/singhritesh85/aws-msk-producer-consumer.git']])
+            }
+        }
+        stage("Create docker image, scan it and push to ECR"){
+            steps{
+                sh '''
+				      if [[ -z `/bin/bash -c "kubectl get configmap msk-bootstrap -n producer-consumer|grep msk-bootstrap|cut -d ' ' -f1"` ]]
+                      then
+                        kubectl create configmap msk-bootstrap -n producer-consumer --from-literal=bootstrapServers=$(aws kafka get-bootstrap-brokers --cluster-arn "${MSK_CLUSTER_ARN}" --region ${AWS_REGION} --query 'BootstrapBrokerStringSaslIam' --output text)
+                      fi
+					  docker system prune -f --all
+                      docker build -t ${REPO_NAME}:${TAG_NAME} -f Dockerfile .
+                      aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 027330342406.dkr.ecr.us-east-2.amazonaws.com
+                      docker push ${REPO_NAME}:${TAG_NAME}
+                '''
+            }
+        }
+        stage("Deployment"){
+            steps{
+                sh 'yes|argocd login argocd.singhritesh85.com --username admin --password ${ARGOCD_PASSWORD} --grpc-web'
+                sh 'argocd repo add https://github.com/singhritesh85/aws-msk-producer-consumer.git --username ${GITHUB_USERNAME} --password ${GITHUB_PASSWORD}'
+                sh 'argocd app create kafka-topic --project default --repo https://github.com/singhritesh85/aws-msk-producer-consumer.git --path ./aws-msk-kafka-topic/overlays/dev --dest-namespace producer-consumer --sync-option CreateNamespace=true --dest-server https://kubernetes.default.svc --sync-policy automated --kustomize-image kafka=${REPO_NAME}:${TAG_NAME} --upsert'
+                //sh 'argocd app sync kafka-topic'
+                sh 'kubectl get pods -n producer-consumer'  
+            }
+        }
+    }
+}
