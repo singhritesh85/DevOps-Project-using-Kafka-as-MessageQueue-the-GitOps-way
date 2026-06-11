@@ -1,0 +1,36 @@
+pipeline{
+    agent{
+        node{
+            label "Slave-1"
+            customWorkspace "/home/k8s-management/producer-consumer/"
+        }
+    }
+    environment {
+        JAVA_HOME="/usr/lib/jvm/java-25-amazon-corretto.x86_64"
+        PATH="$PATH:$JAVA_HOME/bin:/usr/local/bin:/opt/apache-maven/bin:/opt/node-v16.0.0/bin"
+        ARGOCD_PASSWORD=credentials('argocd-password')
+        GITHUB_USERNAME=credentials('github-username')
+        GITHUB_PASSWORD=credentials('github-password')
+    }
+    parameters { 
+        string(name: 'COMMIT_ID', defaultValue: '', description: 'Provide the Commit ID') 
+        string(name: 'REPO_NAME', defaultValue: '', description: 'Provide the Repository Name')
+        string(name: 'TAG_NAME', defaultValue: '', description: 'Provide the Tag Name')
+    }
+    stages{
+        stage("Logs Docker client into an Amazon ECR"){
+            steps{
+                sh 'aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 027330342406.dkr.ecr.us-east-2.amazonaws.com'
+            }
+        }
+        stage("Deployment"){
+            steps{
+                sh 'yes|argocd login argocd.singhritesh85.com --username admin --password ${ARGOCD_PASSWORD} --grpc-web'
+                sh 'argocd repo add https://github.com/singhritesh85/aws-msk-producer-consumer.git --username ${GITHUB_USERNAME} --password ${GITHUB_PASSWORD}'
+                sh 'argocd app create kafka-producer-consumer --project default --repo https://github.com/singhritesh85/aws-msk-producer-consumer.git --path ./producer-consumer/overlays/dev --dest-namespace producer-consumer --sync-option CreateNamespace=true --dest-server https://kubernetes.default.svc --sync-policy automated --kustomize-image kafka=${REPO_NAME}:${TAG_NAME} --upsert'
+                //sh 'argocd app sync kafka-producer-consumer'
+                sh 'kubectl get pods -n producer-consumer'  
+            }
+        }
+    }
+}
