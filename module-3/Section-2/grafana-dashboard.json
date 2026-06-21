@@ -1,0 +1,198 @@
+{
+  "title": "Confluent Kafka 8.1.3 KRaft - Cluster + Node Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Kafka Brokers (Active Targets)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "count(up{job=~\".*kafka.*\"} == 1)",
+          "legendFormat": "brokers"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Kafka Pods Up",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_ready{namespace=\"confluent\", condition=\"true\"})",
+          "legendFormat": "pods"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "CPU Usage (Cluster Avg)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "avg(rate(container_cpu_usage_seconds_total{namespace=\"confluent\", container=\"kafka\"}[5m]))",
+          "legendFormat": "cpu"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Memory Usage (Cluster Avg)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "avg(container_memory_usage_bytes{namespace=\"confluent\", container=\"kafka\"})",
+          "legendFormat": "memory"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Kafka Throughput (Messages/sec proxy)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_server_brokertopicmetrics_count[5m]))",
+          "legendFormat": "messages/sec"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Log Append Rate",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_server_brokertopicmetrics_count{name=\"LogAppendDataSizeInBytes\"}[5m]))",
+          "legendFormat": "append rate"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Log Fetch Rate",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_server_brokertopicmetrics_count{name=\"LogFetchDataSizeInBytes\"}[5m]))",
+          "legendFormat": "fetch rate"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request Latency (Append)",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "kafka_server_brokertopicmetrics_max{name=\"LogAppendLatencyMs\"}",
+          "legendFormat": "append latency"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Request Latency (Fetch)",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "kafka_server_brokertopicmetrics_max{name=\"LogFetchLatencyMs\"}",
+          "legendFormat": "fetch latency"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Consumer Lag (Proxy)",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "kafka_server_brokertopicmetrics_max{name=\"ConsumerFetchLagTimeMs\"}",
+          "legendFormat": "lag"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "ISR Shrinks / Expands",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "kafka_server_replicamanager_fiveminuterate{name=\"IsrShrinksPerSec\"}",
+          "legendFormat": "shrinks"
+        },
+        {
+          "expr": "kafka_server_replicamanager_fiveminuterate{name=\"IsrExpandsPerSec\"}",
+          "legendFormat": "expands"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "KRaft Health (Request Rate)",
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "kafka_server_raft_channel_metrics_request_rate",
+          "legendFormat": "raft req/s"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "KRaft Network IO",
+      "gridPos": { "x": 0, "y": 36, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(kafka_server_raft_channel_metrics_network_io_total[5m])",
+          "legendFormat": "network io"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Socket IO Ratio",
+      "gridPos": { "x": 12, "y": 36, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "avg by(listener) (kafka_server_socket_server_metrics_io_ratio)",
+          "legendFormat": "{{listener}}"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "JVM Heap Usage %",
+      "gridPos": { "x": 0, "y": 44, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "100 * (jvm_memory_bytes_used{area=\"heap\"} / jvm_memory_bytes_max{area=\"heap\"})",
+          "legendFormat": "heap %"
+        }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "GC Pressure",
+      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(jvm_gc_collection_seconds_sum[5m])",
+          "legendFormat": "gc time"
+        }
+      ]
+    }
+  ]
+}
